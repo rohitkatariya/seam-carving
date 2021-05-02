@@ -1,0 +1,33 @@
+#for compiled python files
+*.pyc
+#for vim temporary files
+*~
+#*.log
+#*.swp
+#**/metastore_db/*
+#**/metastore_db/**
+**/.ipynb_checkpoints/**
+**/__pycache__/**
+**/.vscode/**
+*.swo
+metastore_db/
+**/metastore_db/
+*-checkpoint.ipynb
+#*.csv
+#**/datadump/**
+#*.log
+#*.err
+#*.index
+#**/nohup.out
+#ApiLogs/*
+#Data/*
+#server_ip.py
+#rough_dir/*
+other_files/*
+#JA_Online_dev/*
+#AB_Testing_Setup_dev/*
+#JA_Online_Features/*
+#JA_Online_New_Model_Comparison/*
+#JA_Online/test_ipynb/*
+#ReadNegativeFeedback_dev/*
+Data/*                        
