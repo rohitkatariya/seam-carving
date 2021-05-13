@@ -105,7 +105,7 @@ class SeamCarving:
             self.img_energy = np.rollaxis(self.img_energy,1)
             
         if self.show_temp_image:
-            cv2.imshow("intermediate image_{}_{}".format(((num_hor)//10)*10 , (num_ver//10)*10),temp_img)
+            cv2.imshow("intermediate image".format(((num_hor)//10)*10 , (num_ver//10)*10),temp_img)
             cv2.waitKey(1)
         return vertical_removal,seam_used
             
@@ -203,7 +203,7 @@ class SeamCarving:
 
     def reduce_image_size(self,img_,r,c):
         self.img = img_.copy()
-        self.img_energy = self.e1(self.img.copy())
+        self.img_energy = self.computeEnergy(self.img.copy())
         seams_removed = []
         while r+c>0:
             # stream_orientation = self.seamToRemove()
@@ -218,16 +218,49 @@ class SeamCarving:
                 print("Error r,c<0",r,c)
                 exit()
         return seams_removed
-    def insert_transformed_seams_horizontal(img,transformed_seams):
+    def insert_transformed_seams_horizontal(self,img,transformed_seams,show_seams = False):
+        # pdb.set_trace()
+        new_shape = (img.shape[0]+len(transformed_seams),img.shape[1],3)
+        transformed_seams_orig = transformed_seams.copy()
+        img_new = np.zeros( new_shape ,np.uint8)
+        
+        if show_seams:
+            seams_image = img.copy()
+            for this_transformed_seam in transformed_seams:
+                for this_point in this_transformed_seam:
+                    seams_image[this_point[0]][this_point[1]] = (255,0,0)
+            
+        for i in range(img.shape[0]):
+            img_new[i,:,:]=img[i]
         while len(transformed_seams)>0:
             this_seam = transformed_seams.pop()
-            print('Error')
+            for seam_point in this_seam:
+                img_new[seam_point[0]+1:,seam_point[1],:] = img_new[seam_point[0]:-1,seam_point[1],:]
+                for color_idx in range(3):
+                    a = int(img_new[seam_point[0],seam_point[1],color_idx])
+                    b = int(img_new[max(0,seam_point[0]-1),seam_point[1],color_idx])
+                    img_new[seam_point[0],seam_point[1],color_idx] = (a+b)//2
+            for seam_idx in range(len(transformed_seams)):
+                new_this_transformed_seam = []
+                # pdb.set_trace()
+                for this_point_idx in range(len(transformed_seams[seam_idx])):
+                    this_point = transformed_seams[seam_idx][this_point_idx]
+                    if this_point[0]>=this_seam[this_point_idx][0]:
+                        this_point = (this_point[0]+1,this_point[1])
+                    new_this_transformed_seam.append(this_point)
+                transformed_seams[seam_idx] = new_this_transformed_seam
+        name_transformed = "{}{}_{}_vs_{}.jpg".format(config.output_dir,self.img_name,config.date_str,len(transformed_seams_orig))
+        cv2.imwrite( name_transformed , img_new)
+        if show_seams:
+            name_transformed = "{}{}_{}_seams_image{}.jpg".format(config.output_dir,self.img_name,config.date_str,len(transformed_seams_orig))
+            cv2.imwrite( name_transformed , seams_image)
+        return img_new
         
-    def insert_transformed_seams_vertical(self,img,transformed_seams):
+    def insert_transformed_seams_vertical(self,img,transformed_seams,show_seams = False):
         new_shape = (img.shape[0],img.shape[1]+len(transformed_seams),3)
         transformed_seams_orig = transformed_seams.copy()
         img_new = np.zeros( new_shape ,np.uint8)
-        show_seams = True
+        
         if show_seams:
             seams_image = img.copy()
             for this_transformed_seam in transformed_seams:
@@ -255,21 +288,23 @@ class SeamCarving:
                 transformed_seams[seam_idx] = new_this_transformed_seam
         name_transformed = "{}{}_{}_vs_{}.jpg".format(config.output_dir,self.img_name,config.date_str,len(transformed_seams_orig))
         cv2.imwrite( name_transformed , img_new)
-        name_transformed = "{}{}_{}_seams_image{}.jpg".format(config.output_dir,self.img_name,config.date_str,len(transformed_seams_orig))
-        cv2.imwrite( name_transformed , seams_image)
+        if show_seams:
+            name_transformed = "{}{}_{}_seams_image{}.jpg".format(config.output_dir,self.img_name,config.date_str,len(transformed_seams_orig))
+            cv2.imwrite( name_transformed , seams_image)
         return img_new
-    def insert_seams(self,img_r,c):
+    def insert_seams(self,img_,r,c):
         seams_removed = self.reduce_image_size(img_.copy(),r,c)
         # pdb.set_trace()
         transformed_seams = self.seams_transform(seams_removed)
         if r>0:
-            self.insert_transformed_seams_horizontal(self.img_orig.copy(),transformed_seams)
+            new_image = self.insert_transformed_seams_horizontal(img_.copy(),transformed_seams)
         else:
-            self.insert_transformed_seams_vertical(self.img_orig.copy(),transformed_seams)
-    def __init__(self,img,r,c,save_obj_flag=False,img_name=""):
+            new_image = self.insert_transformed_seams_vertical(img_.copy(),transformed_seams)
+        return new_image
+    def __init__(self,img,r,c,img_name=""):
         self.img_orig = img
         print("img shape:",img.shape)
-        self.show_temp_image=False
+        self.show_temp_image=True
         self.img_energy_orig = self.computeEnergy(self.img_orig)
         self.img_name = ".".join(img_name.split(".")[:-1])
         if r>=0 and c>=0:
@@ -281,31 +316,45 @@ class SeamCarving:
                 for this_transformed_seam in transformed_seams:
                     print("transforming seam")
                     for this_point in this_transformed_seam:
-                        seams_image[this_point[0]][this_point[1]] = (255,0,0)
+                        seams_image[this_point[0]][this_point[1]] = (0,255,0)
                 cv2.imshow("seams image", seams_image)
-                cv2.waitKey() 
-                cv2.destroyAllWindows()
-            # pdb.set_trace()
-            # cv2.destroyAllWindows()
-            cv2.imshow("energy", cv2.applyColorMap(self.img_energy_orig.astype(np.uint8), cv2.COLORMAP_HOT) )
+                name_transformed = "{}{}_{}_seams_image{}_c{}.jpg".format(config.output_dir,self.img_name,config.date_str,r,c)
+                cv2.imwrite( name_transformed , seams_image)
+            name_transformed = "{}{}_{}_sizedown_r{}_c{}.jpg".format(config.output_dir,self.img_name,config.date_str,r,c)
+            cv2.imwrite( name_transformed , self.img)
+            
+            # cv2.COLORMAP_HOT
+            cv2.imshow("energy", cv2.applyColorMap(self.img_energy_orig.astype(np.uint8), cv2.COLORMAP_HSV) )
             cv2.imshow("orig image", self.img_orig)
             cv2.imshow("transformed image", self.img)
             cv2.waitKey()          
             cv2.destroyAllWindows()
         print(r,c)
         if r<0 or c<0:
+            new_image = img.copy()
             if c<0:
-                self.insert_seams(0,-c)
+                print ("removing {} cols".format(c))
+                new_image = self.insert_seams(new_image,0,-c)
+            if r<0:
+                new_image = self.insert_seams(new_image,-r,0)
+            if r>0:
+                seams_removed = self.reduce_image_size(new_image,r,0)
+                new_image = self.img.copy()
+            if c>0:
+                seams_removed = self.reduce_image_size(new_image,0,c)
+                new_image = self.img.copy()
+            name_transformed = "{}{}_{}_finalinsert_r{}_c{}.jpg".format(config.output_dir,self.img_name,config.date_str,r,c)
+            cv2.imwrite( name_transformed , new_image)
+            self.seam_inserted_image = new_image.copy()
 
         
 if __name__=="__main__":
     # obj_removed = ObjectRemoval()
-    name = "3.jpg"
+    name = "14.jpg"
     img = cv2.imread("Data/input/"+name, 1)
-    # save_obj_flag = input("do you want to save onject?") == 'y'
-    save_obj_flag = False
+    
     r,c = [int(z) for z in input("enter number of rows and columns to remove").split()]
-    sc = SeamCarving(img,r,c,save_obj_flag=save_obj_flag,img_name=name)
+    sc = SeamCarving(img,r,c,img_name=name)
 
   
 

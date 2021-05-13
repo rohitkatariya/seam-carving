@@ -3,13 +3,11 @@ import cv2
 import numpy as np,sys
 import matplotlib.pyplot as plt
 import pdb
-import config
-
 def wait_and_destroy():
     cv2.waitKey()
     cv2.destroyAllWindows()
 
-class ObjectRemoval:
+class ObjectPreserve:
     def e1(self,img_gray):
         diff_xdir = np.diff(img_gray.astype(np.int64),axis=1)
         diff_xdir = np.concatenate((diff_xdir,diff_xdir[:,-1].reshape(-1,1)),axis=1)
@@ -45,7 +43,7 @@ class ObjectRemoval:
     def remove_vertical_seam(self):
         
         img_gray = cv2.cvtColor(self.img,cv2.COLOR_RGB2GRAY)
-        print(img_gray.shape)
+        # print(img_gray.shape)
         img_copy = img_gray.copy()
         object_removal_mask = self.object_mask
         img_energy = self.e1(img_copy)
@@ -68,21 +66,27 @@ class ObjectRemoval:
         # img_copy = img_copy[mask].reshape(img_copy.shape[0],img_copy.shape[1]-1)
         # return v_seams,img_copy
 
-    def remove_seam(self):
+    def remove_seam(self,r_seams,c_seams):
         
         img_gray = cv2.cvtColor(self.img,cv2.COLOR_RGB2GRAY)
-        print(img_gray.shape)
+        # print(img_gray.shape)
         img_copy = img_gray.copy()
         
         img_energy = self.e1(img_copy)
         img_energy = img_energy.astype(np.int64)
-        img_energy = img_energy + (255-self.object_mask).astype(bool).astype(img_energy.dtype)*-99999
+        # img_energy = img_energy + (255-self.object_mask).astype(bool).astype(img_energy.dtype)*-99999
         img_energy =  img_energy + (255-self.object_mask_save).astype(bool).astype(img_energy.dtype)*2*999
-        v_seam_this,energy_vert =self.vertical_seam(img_energy)
-        h_seam_this,energy_horz = self.horizontal_seam(img_energy)
-        vertical_removal=0
-        if energy_vert<energy_horz:
+        if c_seams>0:
+            v_seam_this,energy_vert =self.vertical_seam(img_energy)
             vertical_removal=1
+        if r_seams>0:
+            h_seam_this,energy_horz = self.horizontal_seam(img_energy)
+            vertical_removal=0
+        if r_seams>0 and c_seams>0:
+            vertical_removal=0
+            if energy_vert<energy_horz:
+                vertical_removal=1
+        print(r_seams,c_seams,vertical_removal)
         if vertical_removal==1:
             mask = np.ones(img_copy.shape,dtype=bool)
             mask[v_seam_this[:,0],v_seam_this[:,1]] = False
@@ -108,12 +112,11 @@ class ObjectRemoval:
             
             self.img = np.rollaxis(self.img,1)
             self.object_mask =np.rollaxis(self.object_mask,1)
-            self.object_mask_save =np.rollaxis(self.object_mask_save,1)
-
-        
+            self.object_mask_save =np.rollaxis(self.object_mask_save,1)        
         cv2.imshow("object_removal_mask",self.object_mask)
         cv2.imshow("intermediate image",temp_img)
         cv2.waitKey(1)
+        return vertical_removal
             # if i%10 ==10:
             #     wait_and_destroy()
         # pdb.set_trace()
@@ -144,7 +147,7 @@ class ObjectRemoval:
 
     def multiple_horizontal_seams(self,img,n):
         h_seams = []
-        print(img.shape)
+        # print(img.shape)
         img_copy = img.copy()
         for i in range(n):
             print(i)
@@ -186,79 +189,50 @@ class ObjectRemoval:
         print("remove_horizontal")
         return 0
          
-    def __init__(self,img,radius_circle,object_removal_flag=True,save_obj_flag=False,min_seams=0,img_name=''):
+    def __init__(self,img,radius_circle,save_obj_flag=False,min_seams=[0,0]):
         self.img = img.copy()
         self.radius_circle =radius_circle
         # Getting masked object
         self.img_copy = img.copy()
         self.object_mask = np.zeros(self.img.shape[:2],np.uint8)+255
-        cv2.imshow("mask image", self.object_mask)
-        cv2.namedWindow(winname = "orig image")
-        cv2.setMouseCallback("orig image", self.draw_circle)
         
-        
-        cv2.imshow("orig image", self.img)
-        cv2.waitKey()          
         # cv2.destroyAllWindows()
         self.object_mask_save = np.zeros(self.img.shape[:2],np.uint8)+255
         if save_obj_flag:
+            cv2.imshow("mask image", self.object_mask_save)
             cv2.namedWindow(winname = "orig image")
             cv2.setMouseCallback("orig image", self.draw_circle_save)
             cv2.imshow("orig image", self.img)
             cv2.waitKey()          
         cv2.destroyAllWindows()
-        # cv2.destroyAllWindows()
-        name_transformed = "{}/object_remove/masked_image_{}_{}_{}.jpg".format(config.output_dir,img_name,config.date_str,str(min_seams))
-        cv2.imwrite( name_transformed , self.img_copy)
-
-        masked_image_final = self.img.copy()
+        masked_image_final = img.copy()
         for i in range(3):
             masked_image_final[:,:,i]=cv2.bitwise_and(255-self.object_mask_save,masked_image_final[:,:,i])
-        name_transformed = "{}/object_remove/object_mask_save_{}_{}_{}.jpg".format(config.output_dir,img_name,config.date_str,str(min_seams))
-        cv2.imwrite( name_transformed , masked_image_final)
-
-        masked_image_final = self.img.copy()
-        for i in range(3):
-            masked_image_final[:,:,i]=cv2.bitwise_and(255-self.object_mask,masked_image_final[:,:,i])
-        name_transformed = "{}/object_remove/object_mask_remove{}_{}_{}.jpg".format(config.output_dir,img_name,config.date_str,str(min_seams))
-        cv2.imwrite( name_transformed , masked_image_final)
-           
-
-        # self.object_mask_save = cv2.bitwise_or(self.object_mask_save.astype(np.bool) , 1-self.object_mask.astype(np.bool))
-        # pdb.set_trace()
-        # Removing Masked object
-        seams_removed =0
-        print("min_seams",min_seams)
-        while np.min(self.object_mask)==0 or seams_removed<min_seams:
+        cv2.imshow("masked image", masked_image_final)
+        cv2.waitKey()   
+        r_seams,c_seams = min_seams
+        while r_seams>0 or c_seams>0:
             # stream_orientation = self.seamToRemove()
-            self.remove_seam()
-            seams_removed+=1
-            # if stream_orientation == 1:
-            #     self.remove_horizontal_seam()
-            # else:
-            #     self.remove_vertical_seam()
-            # pdb.set_trace()
-            # self.img_gray = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)
-            # self.object_removal_flag = object_removal_flag
-            # kl= self.multiple_vertical_seams(self.img_orig,-1)
+            seam_removed = self.remove_seam(r_seams,c_seams)
+            if seam_removed==0:
+                r_seams-=1
+            else:
+                c_seams-=1
         cv2.destroyAllWindows()
         cv2.imshow("transformed image", self.img)
+        
         cv2.waitKey()          
         cv2.destroyAllWindows()
-        
-        name_transformed = "{}/object_remove/{}_{}_{}.jpg".format(config.output_dir,img_name,config.date_str,str(min_seams))
-        cv2.imwrite( name_transformed , self.img)
         # pdb.set_trace()
         # exit()
         # pdb.set_trace()
 if __name__=="__main__":
     # obj_removed = ObjectRemoval()
-    name = "12.jpg"
+    name = "80.jpg"
     img = cv2.imread("Data/input/"+name, 1)
     radius_circle = int(input("enter circle radius : "))
-    save_obj_flag = input("do you want to save onject?") == 'y'
-    min_seams = int(input("enter min number of seams to remove:"))
-    sc = ObjectRemoval(img,radius_circle,object_removal_flag=True,save_obj_flag=save_obj_flag,min_seams=min_seams,img_name = name)
+    min_seams = [int(k) for k in input("enter min number of seams to remove(r c):").split()]
+    sc = ObjectPreserve(img,radius_circle,save_obj_flag=True,min_seams=min_seams)
 
   
 
