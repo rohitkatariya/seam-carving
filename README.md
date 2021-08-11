@@ -1,4 +1,4 @@
-# seam-carving
+# seam-carving COL783: Digital Image Processing Assignment 
  
 # Look at pdf for better view
 
