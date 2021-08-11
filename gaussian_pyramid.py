@@ -233,10 +233,14 @@ def getEvenImage(img,name):
         return (r,c),None
     return (r,c),sc.seam_inserted_image
 
+import time
 
-name = "3.jpg"
+start_time = time.time()
+name = "5.jpg"
 img = cv2.imread("Data/input/"+name, 1)
 orig_imshape = (img.shape)
+print(orig_imshape)
+# exit()
 (r_added,c_added),img= getEvenImage(img,name)
 print(img.shape)
 # input()
@@ -327,7 +331,7 @@ print("cols", cols)
 # print(np.shape(img))
 # print([r, l, p])
 # num_hori_seams,num_vert_seams=[int(j) for j in input("enter number of rows and columns to remove").split()] # l-newcol
-num_hori_seams,num_vert_seams = 60,70
+num_hori_seams,num_vert_seams = 100,100
 num_hori_seams += r_added
 num_vert_seams += c_added
 num_vert_seams_layer = numseamslayer(num_vert_seams,3)
@@ -457,7 +461,7 @@ if col:
     # img = img[:, :-1]
     images_p[-1] = cv2.resize(images_p[-1], (img.shape[1]+1, img.shape[0]))
 
-
+end_time = time.time()
 cv2.imshow("original image", gpA[0])
 # cv2.waitKey()
 cv2.imshow("resized image", images_p[-1])
@@ -465,6 +469,7 @@ cv2.waitKey()
 
 
 
+# cv2.imwrite( "./pyr.jpg" , images_p[-1])
 # img_copy = np.rollaxis(img,1)
 # cv2.imshow("image",img_copy)
 # img_copy2 = np.rollaxis(img_copy,1)
@@ -474,3 +479,4 @@ cv2.destroyAllWindows()
 
 
 
+print(end_time - start_time)

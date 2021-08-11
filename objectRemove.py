@@ -4,7 +4,7 @@ import numpy as np,sys
 import matplotlib.pyplot as plt
 import pdb
 import config
-
+import SeamCarving
 def wait_and_destroy():
     cv2.waitKey()
     cv2.destroyAllWindows()
@@ -248,17 +248,21 @@ class ObjectRemoval:
         
         name_transformed = "{}/object_remove/{}_{}_{}.jpg".format(config.output_dir,img_name,config.date_str,str(min_seams))
         cv2.imwrite( name_transformed , self.img)
+        # self.name_transformed
         # pdb.set_trace()
         # exit()
         # pdb.set_trace()
 if __name__=="__main__":
     # obj_removed = ObjectRemoval()
-    name = "12.jpg"
+    name = "5.jpg"
     img = cv2.imread("Data/input/"+name, 1)
     radius_circle = int(input("enter circle radius : "))
     save_obj_flag = input("do you want to save onject?") == 'y'
     min_seams = int(input("enter min number of seams to remove:"))
     sc = ObjectRemoval(img,radius_circle,object_removal_flag=True,save_obj_flag=save_obj_flag,min_seams=min_seams,img_name = name)
+    
+    # SeamCarving.SeamCarving(sc.img.copy(),-r,-c,img_name='output_same_size')
+    # sc.img
 
   
 

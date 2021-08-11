@@ -350,7 +350,7 @@ class SeamCarving:
         
 if __name__=="__main__":
     # obj_removed = ObjectRemoval()
-    name = "14.jpg"
+    name = "6.jpg"
     img = cv2.imread("Data/input/"+name, 1)
     
     r,c = [int(z) for z in input("enter number of rows and columns to remove").split()]
